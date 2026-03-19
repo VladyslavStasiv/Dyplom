@@ -1,0 +1,34 @@
+<div class="auth-container">
+  <div class="auth-box">
+    <h2>Створити акаунт</h2>
+
+    @if (errorMessage) {
+      <div class="error-msg">{{ errorMessage }}</div>
+    }
+
+    @if (successMessage) {
+      <div class="success-msg">{{ successMessage }}</div>
+    }
+
+    <div class="form-group">
+      <label>Ім'я користувача (Нікнейм)</label>
+      <input type="text" [(ngModel)]="userData.username" placeholder="Як до вас звертатися?">
+    </div>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" [(ngModel)]="userData.email" placeholder="Введіть ваш email">
+    </div>
+
+    <div class="form-group">
+      <label>Пароль</label>
+      <input type="password" [(ngModel)]="userData.password" placeholder="Придумайте надійний пароль">
+    </div>
+
+    <button class="save-btn w-100" (click)="register()">Зареєструватися</button>
+
+    <p class="switch-link">
+      Вже є акаунт? <a routerLink="/login">Увійти</a>
+    </p>
+  </div>
+</div>

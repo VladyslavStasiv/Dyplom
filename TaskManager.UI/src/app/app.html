@@ -1,0 +1,101 @@
+@if (authService.isLoggedIn()) {
+  <div class="board-container">
+    <header>
+      <div class="header-titles">
+        <h1>Дипломна робота: Task Manager</h1>
+        <span class="welcome-text">Привіт, {{ username }}! 👋</span>
+      </div>
+      <button class="logout-btn" (click)="logout()">Вийти</button>
+    </header>
+
+    <div class="columns-wrapper">
+
+      <div class="column" (dragover)="onDragOver($event)" (drop)="onDrop($event, 1)">
+        <h2>До виконання</h2>
+
+        <button class="add-btn" (click)="showForm ? resetForm() : showForm = true">
+          {{ showForm ? '✖ Скасувати' : '➕ Додати задачу' }}
+        </button>
+
+        @if (showForm) {
+          <div class="task-form">
+            <input type="text" placeholder="Назва задачі..." [(ngModel)]="newTask.title">
+            <textarea placeholder="Опис (необов'язково)" [(ngModel)]="newTask.description"></textarea>
+            <div class="form-row">
+              <label>Дедлайн:</label>
+              <input type="datetime-local" [(ngModel)]="newTask.deadline">
+            </div>
+            <div class="form-row">
+              <label>Складність (1-10):</label>
+              <input type="number" min="1" max="10" [(ngModel)]="newTask.complexity">
+            </div>
+            <button class="save-btn" (click)="saveTask()">{{ editingTaskId ? 'Оновити задачу' : 'Зберегти' }}</button>
+          </div>
+        }
+
+        @for (task of tasks; track task.id) {
+          @if (task.columnId === 1) {
+            <div class="task-card" draggable="true" (dragstart)="onDragStart(task)">
+
+              <div class="task-card-header">
+                <h3>{{ task.title }}</h3>
+                <div style="display: flex; gap: 5px;">
+                  <button class="edit-btn" (click)="openEditForm(task)" title="Редагувати">✏️</button>
+                  <button class="delete-btn" (click)="deleteTask(task.id)" title="Видалити">✖</button>
+                </div>
+              </div>
+
+              <p>Пріоритет: {{ task.priorityScore }} 🔴</p>
+              <p style="font-size: 0.8rem; color: #808080;">Дедлайн: {{ task.deadline | date:'short' }}</p>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="column" (dragover)="onDragOver($event)" (drop)="onDrop($event, 2)">
+        <h2>В процесі</h2>
+
+        @for (task of tasks; track task.id) {
+          @if (task.columnId === 2) {
+            <div class="task-card in-progress-card" draggable="true" (dragstart)="onDragStart(task)">
+
+              <div class="task-card-header">
+                <h3>{{ task.title }}</h3>
+                <div style="display: flex; gap: 5px;">
+                  <button class="edit-btn" (click)="openEditForm(task)" title="Редагувати">✏️</button>
+                  <button class="delete-btn" (click)="deleteTask(task.id)" title="Видалити">✖</button>
+                </div>
+              </div>
+
+              <p>Пріоритет: {{ task.priorityScore }} 🟡</p>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="column" (dragover)="onDragOver($event)" (drop)="onDrop($event, 3)">
+        <h2>Готово</h2>
+
+        @for (task of tasks; track task.id) {
+          @if (task.columnId === 3) {
+            <div class="task-card done-card" draggable="true" (dragstart)="onDragStart(task)">
+
+              <div class="task-card-header">
+                <h3 style="text-decoration: line-through; color: #808080;">{{ task.title }}</h3>
+                <div style="display: flex; gap: 5px;">
+                  <button class="edit-btn" (click)="openEditForm(task)" title="Редагувати">✏️</button>
+                  <button class="delete-btn" (click)="deleteTask(task.id)" title="Видалити">✖</button>
+                </div>
+              </div>
+
+              <p style="color: #5aac44; font-weight: bold;">Виконано! 🎉</p>
+            </div>
+          }
+        }
+      </div>
+
+    </div>
+  </div>
+} @else {
+  <router-outlet></router-outlet>
+}

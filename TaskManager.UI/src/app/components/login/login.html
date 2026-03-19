@@ -1,0 +1,27 @@
+<div class="auth-container">
+  <div class="auth-box">
+    <h2>Вхід у Task Manager</h2>
+
+    @if (errorMessage) {
+      <div class="error-msg">
+        {{ errorMessage }}
+      </div>
+    }
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" [(ngModel)]="credentials.email" placeholder="Введіть ваш email">
+    </div>
+
+    <div class="form-group">
+      <label>Пароль</label>
+      <input type="password" [(ngModel)]="credentials.password" placeholder="Введіть ваш пароль">
+    </div>
+
+    <button class="save-btn w-100" (click)="login()">Увійти</button>
+
+    <p class="switch-link">
+      Ще не з нами? <a routerLink="/register">Зареєструватися</a>
+    </p>
+  </div>
+</div>
