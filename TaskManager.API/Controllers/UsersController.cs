@@ -25,11 +25,14 @@ namespace TaskManager.API.Controllers
             _configuration = configuration;
         }
 
-        // GET: api/users (Отримати список всіх користувачів)
+        // GET: api/users
         [HttpGet]
         public async Task<ActionResult<IEnumerable<User>>> GetUsers()
         {
-            return await _context.Users.ToListAsync();
+            return await _context.Users
+                .Include(u => u.OwnedBoards)    
+                .Include(u => u.SharedBoards)   
+                .ToListAsync();
         }
 
         // POST: api/users/register (БЕЗПЕЧНА РЕЄСТРАЦІЯ замість старого CreateUser)
@@ -53,9 +56,27 @@ namespace TaskManager.API.Controllers
             };
 
             _context.Users.Add(user);
+            // 💡 ЗБЕРІГАЄМО КОРИСТУВАЧА ПЕРШИМ, щоб база даних видала йому унікальний ID
+            await _context.SaveChangesAsync(); 
+
+            // 💡 НОВИЙ БЛОК: Автоматично створюємо персональну дошку для новачка
+            var defaultBoard = new Board
+            {
+                Title = "Головна дошка", // Або $"Дошка {user.Username}"
+                OwnerId = user.Id,
+                Columns = new List<BoardColumn>
+                {
+                    new BoardColumn { Title = "До виконання", Position = 1 },
+                    new BoardColumn { Title = "В процесі", Position = 2 },
+                    new BoardColumn { Title = "Готово", Position = 3 }
+                }
+            };
+
+            _context.Boards.Add(defaultBoard);
+            // Зберігаємо дошку разом із колонками
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Реєстрація успішна!" });
+            return Ok(new { message = "Реєстрація успішна! Персональну дошку створено." });
         }
 
         // POST: api/users/login (Вхід в систему та отримання токена)

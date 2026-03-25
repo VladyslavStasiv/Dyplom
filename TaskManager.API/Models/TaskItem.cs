@@ -1,4 +1,4 @@
-// 💡 ДОДАНО: Цей рядок підключає інструменти для роботи з JSON
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace TaskManager.API.Models
@@ -9,23 +9,42 @@ namespace TaskManager.API.Models
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
         
-        // Поля для твого алгоритму черговості (дипломна фішка)
         public DateTime? Deadline { get; set; }
-        public int Complexity { get; set; } // Оцінка складності (наприклад, 1-10)
-        public double PriorityScore { get; set; } // Розрахований пріоритет (чим більше, тим важливіше)
+        public int Complexity { get; set; } 
         
-        // Зв'язок з колонкою на дошці
+        // 💡 НОВЕ: Робимо пріоритет динамічним!
+        [NotMapped] // Цей атрибут каже Entity Framework НЕ створювати колонку в базі даних
+        public double PriorityScore 
+        { 
+            get 
+            {
+                double score = Complexity * 10; 
+
+                if (Deadline.HasValue)
+                {
+                    var daysLeft = (Deadline.Value - DateTime.UtcNow).TotalDays;
+                    
+                    if (daysLeft > 0)
+                    {
+                        score += (100 / daysLeft); 
+                    }
+                    else
+                    {
+                        score += 1000; 
+                    }
+                }
+                
+                return Math.Round(score, 2);
+            }
+        }
+        
         public int ColumnId { get; set; }
 
-        // 💡 ДОДАНО: Кажемо генератору ігнорувати цей об'єкт при створенні JSON
         [JsonIgnore]
         public BoardColumn? Column { get; set; }
 
-        // 💡 НОВЕ: Зв'язок з користувачем (власником задачі)
-        // Саме ці два поля гарантують, що кожен бачить ТІЛЬКИ свої задачі
         public int UserId { get; set; }
 
-        // 💡 ДОДАНО: Кажемо генератору ігнорувати цей об'єкт при створенні JSON
         [JsonIgnore]
         public User? User { get; set; }
     }

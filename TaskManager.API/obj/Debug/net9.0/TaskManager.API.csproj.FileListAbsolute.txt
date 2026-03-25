@@ -128,3 +128,4 @@ C:\Users\Vlad\TaskManagerDiploma\TaskManager.API\bin\Debug\net9.0\Microsoft.Iden
 C:\Users\Vlad\TaskManagerDiploma\TaskManager.API\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 C:\Users\Vlad\TaskManagerDiploma\TaskManager.API\bin\Debug\net9.0\Microsoft.IdentityModel.Tokens.dll
 C:\Users\Vlad\TaskManagerDiploma\TaskManager.API\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Vlad\TaskManagerDiploma\TaskManager.API\obj\Debug\net9.0\TaskManager.API.sourcelink.json

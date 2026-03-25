@@ -6,70 +6,69 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class AuthService {
-  // Адреса нашого бекенду для користувачів
   private readonly apiUrl = 'http://localhost:5133/api/Users';
 
   constructor(private readonly http: HttpClient) { }
 
-  // 1. Реєстрація нового користувача
+  // Реєстрація
   register(userData: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/register`, userData);
   }
 
-  // 2. Вхід (Логін)
+  // Вхід в систему
   login(credentials: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/login`, credentials);
   }
 
-  // 3. Збереження токена в "сейф" браузера
+  // Збереження токена в localStorage
   saveToken(token: string): void {
     localStorage.setItem('jwt_token', token);
   }
 
-  // 4. Отримання токена
+  // Отримання токена
   getToken(): string | null {
     return localStorage.getItem('jwt_token');
   }
 
-  // 5. Перевірка, чи користувач зараз залогінений
+  // Перевірка активної сесії
   isLoggedIn(): boolean {
-    return !!this.getToken(); // Повертає true, якщо токен існує
+    return !!this.getToken();
   }
 
-  // 6. Вихід з системи (просто видаляємо токен)
+  // Вихід (очищення сесії)
   logout(): void {
     localStorage.removeItem('jwt_token');
   }
 
-  // Метод для витягування імені користувача з JWT токена
+  // Декодування імені з JWT токена (з підтримкою кирилиці)
   getUsername(): string {
-    const token = this.getToken(); // Беремо токен з пам'яті браузера
-
-    // Якщо токена немає (користувач не залогінений), повертаємо стандартне слово
+    const token = this.getToken();
     if (!token) return 'Гість';
 
     try {
-      // JWT токен складається з 3 частин, розділених крапкою (.).
-      // Нам потрібна друга частина (індекс 1), де лежить так званий "payload" (корисне навантаження)
+      // Дістаємо payload (другу частину токена)
       const payload = token.split('.')[1];
 
-      // Розшифровуємо рядок з формату Base64
-      const decodedJson = atob(payload);
+      // Виправляємо специфічні символи Base64Url для коректного парсингу (використовуємо сучасний replaceAll)
+      const base64 = payload.replaceAll('-', '+').replaceAll('_', '/');
+      const binaryString = atob(base64);
 
-      // Перетворюємо розшифрований текст у повноцінний JavaScript-об'єкт
+      // Декодуємо байти в UTF-8 для правильного відображення української мови
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        // Використовуємо сучасний codePointAt замість charCodeAt (додаємо ?? 0 для безпеки типів)
+        bytes[i] = binaryString.codePointAt(i) ?? 0;
+      }
+      const decodedJson = new TextDecoder('utf-8').decode(bytes);
       const decodedData = JSON.parse(decodedJson);
 
-      // C# зазвичай зберігає ім'я (Username) у спеціальному полі з довгою системною назвою.
-      // Шукаємо його, або використовуємо короткі варіанти, якщо бекенд налаштовано інакше.
-      // Якщо взагалі нічого не знайдено, виводимо 'Користувач'.
-      const username = decodedData['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name']
-                    || decodedData.unique_name
-                    || decodedData.name
-                    || 'Користувач';
+      // Витягуємо ім'я зі стандартних полів .NET або загальних полів JWT
+      return decodedData['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name']
+          || decodedData.unique_name
+          || decodedData.name
+          || 'Користувач';
 
-      return username;
     } catch (error) {
-      // Якщо токен пошкоджений або сталася помилка розшифровки, не ламаємо сайт, а просто повертаємо дефолтне ім'я
       console.error('Помилка розшифровки токена:', error);
       return 'Користувач';
     }

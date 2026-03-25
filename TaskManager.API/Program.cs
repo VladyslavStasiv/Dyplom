@@ -4,6 +4,7 @@ using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,7 +26,11 @@ builder.Services.AddCors(options =>
 });
 
 // 2. Додаємо підтримку Контролерів
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    // Цей магічний рядок каже: "Якщо бачиш нескінченний цикл - просто зупинись і не видавай помилку"
+    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+});
 
 // --- ДОДАЙ ЦЕЙ БЛОК ДЛЯ АВТОРИЗАЦІЇ ---
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -61,47 +66,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-// --- ДОДАЄМО СТАНДАРТНІ КОЛОНКИ ДЛЯ РОБОТИ АНГЮЛЯРА ---
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<TaskManager.API.Data.AppDbContext>();
-
-    // 1. Створюємо системного користувача (щоб дошка мала легального власника)
-    var systemUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "system@admin.com");
-    if (systemUser == null)
-    {
-        systemUser = new TaskManager.API.Models.User 
-    { 
-        Username = "SystemAdmin", 
-        Email = "system@admin.com", 
-        // Використовуємо генератор випадкових рядків, щоб аналізатор був спокійний
-        PasswordHash = Guid.NewGuid().ToString() 
-    };
-        context.Users.Add(systemUser);
-        await context.SaveChangesAsync();
-    }
-
-    // 2. Створюємо Дошку і робимо Систему її власником
-    var board = await context.Boards.FirstOrDefaultAsync();
-    if (board == null)
-    {
-        board = new TaskManager.API.Models.Board { Title = "Головна дошка", OwnerId = systemUser.Id }; 
-        context.Boards.Add(board);
-        await context.SaveChangesAsync(); 
-    }
-
-    // 3. Створюємо 3 стандартні колонки (ID 1, 2, 3) для Angular
-    if (!await context.BoardColumns.AnyAsync()) 
-    {
-        context.BoardColumns.AddRange(
-            new TaskManager.API.Models.BoardColumn { Title = "До виконання", Position = 1, BoardId = board.Id },
-            new TaskManager.API.Models.BoardColumn { Title = "В процесі", Position = 2, BoardId = board.Id },
-            new TaskManager.API.Models.BoardColumn { Title = "Готово", Position = 3, BoardId = board.Id }
-        );
-        await context.SaveChangesAsync(); 
-    }
-}
-// --------------------------------------------------------
 
 await app.RunAsync();
