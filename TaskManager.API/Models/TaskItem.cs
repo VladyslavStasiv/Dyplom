@@ -12,29 +12,43 @@ namespace TaskManager.API.Models
         public DateTime? Deadline { get; set; }
         public int Complexity { get; set; } 
         
-        // 💡 НОВЕ: Робимо пріоритет динамічним!
-        [NotMapped] // Цей атрибут каже Entity Framework НЕ створювати колонку в базі даних
-        public double PriorityScore 
+        // 💡 НОВЕ: Багатокритеріальний зважений алгоритм пріоритезації
+        [NotMapped] 
+        public int PriorityScore 
         { 
             get 
             {
-                double score = Complexity * 10; 
+                int score = 0;
 
+                // 1. Оцінка складності (Складність від 1 до 10 множимо на 3)
+                // Максимум: 30 балів
+                score += Complexity * 3; 
+
+                // 2. Оцінка дедлайну (Експоненційне зростання важливості)
                 if (Deadline.HasValue)
                 {
-                    var daysLeft = (Deadline.Value - DateTime.UtcNow).TotalDays;
+                    // Використовуємо UtcNow, щоб не було проблем з часовими поясами
+                    var timeRemaining = Deadline.Value - DateTime.UtcNow;
                     
-                    if (daysLeft > 0)
+                    if (timeRemaining.TotalHours < 0)
                     {
-                        score += (100 / daysLeft); 
+                        score += 70; // 🚨 Прострочено: Максимальний пріоритет
                     }
-                    else
+                    else if (timeRemaining.TotalHours <= 24)
                     {
-                        score += 1000; 
+                        score += 50; // ⏳ Менше доби до здачі
+                    }
+                    else if (timeRemaining.TotalDays <= 3)
+                    {
+                        score += 30; // 📅 Менше 3 днів
+                    }
+                    else if (timeRemaining.TotalDays <= 7)
+                    {
+                        score += 15; // 🗓️ Менше тижня
                     }
                 }
                 
-                return Math.Round(score, 2);
+                return score;
             }
         }
         

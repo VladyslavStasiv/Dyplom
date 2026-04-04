@@ -26,9 +26,142 @@ export class App implements OnInit {
 
   searchQuery: string = '';
 
-  // 💡 НОВЕ: Змінні для спливаючого опису (Tooltip)
   hoverTimeout: any;
   hoveredTaskId: number | null = null;
+
+  isDarkMode: boolean = false;
+
+  invitations: any[] = [];
+  showInvitationsModal = false;
+
+  // ==========================================
+  // 💡 ВЛАСНІ ВІКОНЦЯ (Оновлено для миттєвого відображення)
+  // ==========================================
+  customAlertMessage: string | null = null;
+  customConfirmMessage: string | null = null;
+  confirmAction: (() => void) | null = null;
+
+  showAlert(message: string) {
+    this.customAlertMessage = message;
+    this.cdr.detectChanges(); // 💡 ПРИМУСОВЕ оновлення екрану!
+  }
+
+  closeAlert() {
+    this.customAlertMessage = null;
+    this.cdr.detectChanges();
+  }
+
+  showConfirm(message: string, action: () => void) {
+    this.customConfirmMessage = message;
+    this.confirmAction = action;
+    this.cdr.detectChanges();
+  }
+
+  confirmYes() {
+    if (this.confirmAction) {
+      this.confirmAction();
+    }
+    this.closeConfirm();
+  }
+
+  confirmNo() {
+    this.closeConfirm();
+  }
+
+  closeConfirm() {
+    this.customConfirmMessage = null;
+    this.confirmAction = null;
+    this.cdr.detectChanges();
+  }
+  // ==========================================
+
+  fetchInvitations() {
+    this.http.get<any[]>('http://localhost:5133/api/boards/invitations').subscribe({
+      next: (data) => {
+        this.invitations = data;
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Помилка завантаження запрошень:', err)
+    });
+  }
+
+  acceptInvitation(boardId: number) {
+    this.http.post(`http://localhost:5133/api/boards/${boardId}/accept`, {}).subscribe({
+      next: () => {
+        // 💡 Замість alert()
+        this.showAlert('Запрошення успішно прийнято!');
+        this.fetchInvitations();
+        this.fetchBoard();
+        if (this.invitations.length <= 1) this.closeInvitationsModal();
+      },
+      error: (err) => console.error('Помилка прийняття:', err)
+    });
+  }
+
+  declineInvitation(boardId: number) {
+    // 💡 Замість confirm()
+    this.showConfirm('Ви впевнені, що хочете відхилити це запрошення?', () => {
+      this.http.post(`http://localhost:5133/api/boards/${boardId}/decline`, {}).subscribe({
+        next: () => {
+          this.fetchInvitations();
+          if (this.invitations.length <= 1) this.closeInvitationsModal();
+        },
+        error: (err) => console.error('Помилка відхилення:', err)
+      });
+    });
+  }
+
+  openInvitationsModal() {
+    if (this.invitations.length > 0) {
+      this.showInvitationsModal = true;
+    } else {
+      // 💡 Замість alert()
+      this.showAlert('У вас немає нових запрошень.');
+    }
+  }
+
+  closeInvitationsModal() {
+    this.showInvitationsModal = false;
+  }
+
+  toggleDarkMode() {
+    this.isDarkMode = !this.isDarkMode;
+    localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
+  }
+
+  exportToCSV() {
+    if (this.filteredTasks.length === 0) {
+      // 💡 Замість alert()
+      this.showAlert('Немає задач для експорту на цій дошці!');
+      return;
+    }
+
+    let csvContent = "Назва;Опис;Дедлайн;Складність;Статус\n";
+
+    this.filteredTasks.forEach(t => {
+      const column = this.columns.find(c => c.id == t.columnId);
+      const columnName = column ? column.title : "Невідомо";
+      const deadline = t.deadline ? new Date(t.deadline).toLocaleString() : "Ні";
+
+      const title = String(t.title || "").replaceAll(";", ",");
+      const desc = String(t.description || "")
+                    .replaceAll(";", ",")
+                    .replaceAll(/[\n\r]/g, " ");
+
+      csvContent += `${title};${desc};${deadline};${t.complexity};${columnName}\n`;
+    });
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Звіт_задач_${new Date().toLocaleDateString()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
 
   get filteredTasks() {
     if (!this.searchQuery || this.searchQuery.trim() === '') {
@@ -39,8 +172,8 @@ export class App implements OnInit {
 
     return this.tasks.filter(t => {
       if (!t) return false;
-      const safeTitle = (t.title || '').toLowerCase();
-      const safeDesc = (t.description || '').toLowerCase();
+      const safeTitle = String(t.title || '').toLowerCase();
+      const safeDesc = String(t.description || '').toLowerCase();
       return safeTitle.includes(lowerQuery) || safeDesc.includes(lowerQuery);
     });
   }
@@ -64,6 +197,70 @@ export class App implements OnInit {
   get progressPercentage() {
     if (this.totalTasksCount === 0) return 0;
     return Math.round((this.doneCount / this.totalTasksCount) * 100);
+  }
+
+  isOverdue(task: any): boolean {
+    if (!task.deadline) return false;
+
+    if (this.columns.length > 2 && task.columnId === this.columns[2].id) {
+      return false;
+    }
+
+    const deadlineDate = new Date(task.deadline).getTime();
+    const now = Date.now();
+
+    return deadlineDate < now;
+  }
+
+  getPriorityConfig(score: number) {
+    if (score >= 70) return { icon: '🔥', color: '#d32f2f', text: 'Критичний' };
+    if (score >= 40) return { icon: '🔴', color: '#e67e22', text: 'Високий' };
+    if (score >= 20) return { icon: '🟡', color: '#f1c40f', text: 'Середній' };
+    return { icon: '🟢', color: '#2ecc71', text: 'Низький' };
+  }
+
+  // ==========================================
+  // 💡 РЕКОМЕНДАЦІЙНА СИСТЕМА
+  // ==========================================
+  recommendedTaskId: number | null = null;
+
+  recommendNextTask() {
+    if (this.columns.length < 2) return;
+
+    // 1. Беремо задачі тільки з колонок "До виконання" та "В процесі"
+    const activeColumnIds = new Set([this.columns[0].id, this.columns[1].id]);
+    const activeTasks = this.tasks.filter(t => activeColumnIds.has(t.columnId));
+
+    if (activeTasks.length === 0) {
+      this.showAlert('У вас немає активних задач. Ви вільні! 🎉');
+      return;
+    }
+
+    // 2. Алгоритм пошуку найважливішої задачі
+    let nextTask = activeTasks[0];
+    for (const task of activeTasks) {
+      if (task.priorityScore > nextTask.priorityScore) {
+        nextTask = task;
+      }
+    }
+
+    // 3. Підсвічуємо її
+    this.recommendedTaskId = nextTask.id;
+    this.cdr.detectChanges(); // Примусово оновлюємо екран
+
+    // 4. Плавно прокручуємо екран до цієї задачі
+    setTimeout(() => {
+      const element = document.getElementById('task-' + nextTask.id);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+
+    // 5. Вимикаємо підсвітку через 5 секунд
+    setTimeout(() => {
+      this.recommendedTaskId = null;
+      this.cdr.detectChanges();
+    }, 5000);
   }
 
   get isCurrentBoardOwner(): boolean {
@@ -107,9 +304,13 @@ export class App implements OnInit {
   ) {}
 
   ngOnInit() {
+    const savedTheme = localStorage.getItem('theme');
+    this.isDarkMode = savedTheme === 'dark';
+
     this.username = this.authService.getUsername();
     this.fetchBoard();
     this.fetchTasks();
+    this.fetchInvitations();
   }
 
   fetchBoard() {
@@ -177,7 +378,8 @@ export class App implements OnInit {
 
   saveTask() {
     if (!this.newTask.title) {
-      alert('Будь ласка, введіть назву задачі!');
+      // 💡 Замість alert()
+      this.showAlert('Будь ласка, введіть назву задачі!');
       return;
     }
 
@@ -202,7 +404,8 @@ export class App implements OnInit {
   }
 
   deleteTask(id: number) {
-    if (confirm('Ви впевнені, що хочете видалити цю задачу?')) {
+    // 💡 Замість confirm()
+    this.showConfirm('Ви впевнені, що хочете видалити цю задачу?', () => {
       this.http.delete(`http://localhost:5133/api/tasks/${id}`).subscribe({
         next: () => {
           this.fetchTasks();
@@ -211,7 +414,7 @@ export class App implements OnInit {
           console.error('Помилка видалення:', err);
         }
       });
-    }
+    });
   }
 
   moveTask(task: any, newColumnId: number) {
@@ -227,41 +430,27 @@ export class App implements OnInit {
     });
   }
 
-  // ==========================================
-  // 💡 НОВЕ: Логіка для мишки (Спливаючий опис)
-  // ==========================================
-
   onMouseEnter(task: any) {
-    // Якщо в задачі немає опису, нам немає чого показувати
     if (!task.description || task.description.trim() === '') return;
+    if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
 
-    // Якщо мишка вже наведена, скидаємо старий таймер
-    if (this.hoverTimeout) {
-      clearTimeout(this.hoverTimeout);
-    }
-
-    // Запускаємо відлік на 2 секунди (2000 мс)
     this.hoverTimeout = setTimeout(() => {
       this.hoveredTaskId = task.id;
-      this.cdr.detectChanges(); // Оновлюємо UI, щоб показати віконце
+      this.cdr.detectChanges();
     }, 2000);
   }
 
   onMouseLeave() {
-    // Коли мишка йде геть, скасовуємо таймер і ховаємо віконце
-    if (this.hoverTimeout) {
-      clearTimeout(this.hoverTimeout);
-    }
+    if (this.hoverTimeout) clearTimeout(this.hoverTimeout);
     this.hoveredTaskId = null;
     this.cdr.detectChanges();
   }
-  // ==========================================
 
   draggedTaskId: number | null = null;
 
   onDragStart(task: any) {
     this.draggedTaskId = task.id;
-    this.onMouseLeave(); // 💡 Ховаємо підказку, якщо почали тягнути задачу
+    this.onMouseLeave();
   }
 
   onDragOver(event: DragEvent) {
@@ -283,7 +472,8 @@ export class App implements OnInit {
 
   openShareModal() {
     if (!this.currentBoardId) {
-      alert('Помилка: Дошка ще не завантажена!');
+      // 💡 Замість alert()
+      this.showAlert('Помилка: Дошка ще не завантажена!');
       return;
     }
     this.shareEmail = '';
@@ -297,7 +487,8 @@ export class App implements OnInit {
 
   submitShare() {
     if (!this.shareEmail.trim()) {
-      alert('Будь ласка, введіть Email користувача!');
+      // 💡 Замість alert()
+      this.showAlert('Будь ласка, введіть Email користувача!');
       return;
     }
 
@@ -309,12 +500,14 @@ export class App implements OnInit {
 
     this.http.post('http://localhost:5133/api/Boards/share', requestBody).subscribe({
       next: (response: any) => {
-        alert(response.message || 'Доступ успішно надано!');
+        // 💡 Замість alert()
+        this.showAlert(response.message || 'Запрошення успішно надіслано!');
         this.closeShareModal();
       },
       error: (err) => {
         console.error('Помилка спільного доступу:', err);
-        alert(err.error?.message || 'Не вдалося надати доступ. Перевірте консоль.');
+        // 💡 Замість alert()
+        this.showAlert(err.error?.message || 'Не вдалося надіслати запрошення.');
       }
     });
   }
@@ -330,7 +523,8 @@ export class App implements OnInit {
       },
       error: (err) => {
         console.error('Помилка завантаження користувачів:', err);
-        alert('Не вдалося завантажити список доступу.');
+        // 💡 Замість alert()
+        this.showAlert('Не вдалося завантажити список доступу.');
       }
     });
   }
@@ -342,19 +536,18 @@ export class App implements OnInit {
   }
 
   revokeAccess(userId: number) {
-    if (!confirm('Ви впевнені, що хочете забрати доступ у цього користувача? Він більше не побачить цю дошку.')) {
-      return;
-    }
-
-    this.http.delete(`http://localhost:5133/api/Boards/${this.currentBoardId}/share/${userId}`).subscribe({
-      next: () => {
-        this.sharedUsers = this.sharedUsers.filter(u => u.id !== userId);
-        this.fetchBoard();
-      },
-      error: (err) => {
-        console.error('Помилка скасування доступу:', err);
-        alert('Помилка при видаленні користувача.');
-      }
+    // 💡 Замість confirm()
+    this.showConfirm('Ви впевнені, що хочете забрати доступ у цього користувача (або скасувати запрошення)?', () => {
+      this.http.delete(`http://localhost:5133/api/Boards/${this.currentBoardId}/share/${userId}`).subscribe({
+        next: () => {
+          this.sharedUsers = this.sharedUsers.filter(u => u.id !== userId);
+          this.fetchBoard();
+        },
+        error: (err) => {
+          console.error('Помилка скасування доступу:', err);
+          this.showAlert('Помилка при видаленні користувача.');
+        }
+      });
     });
   }
 

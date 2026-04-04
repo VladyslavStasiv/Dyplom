@@ -24,13 +24,24 @@ namespace TaskManager.API.Controllers
             return int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         }
 
-        // GET: api/tasks 
+        // 💡 ДОПОМІЖНИЙ МЕТОД: Записує подію в базу
+        private async Task LogActivity(int boardId, int userId, string action)
+        {
+            var activity = new BoardActivity
+            {
+                BoardId = boardId,
+                UserId = userId,
+                ActionDescription = action,
+                Timestamp = DateTime.UtcNow
+            };
+            _context.BoardActivities.Add(activity);
+        }
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TaskItem>>> GetTasks()
         {
             var userId = GetCurrentUserId(); 
 
-            // 💡 ВІДШЛІФОВАНО: Додано явну перевірку `!= null` у запит до бази
             var accessibleBoardIds = await _context.Boards
                 .Where(b => b.OwnerId == userId || (b.SharedWithUsers != null && b.SharedWithUsers.Any(ub => ub.UserId == userId)))
                 .Select(b => b.Id)
@@ -48,7 +59,6 @@ namespace TaskManager.API.Controllers
             return Ok(sortedTasks);
         }
 
-        // POST: api/tasks
         [HttpPost]
         public async Task<ActionResult<TaskItem>> CreateTask(TaskItem task)
         {
@@ -63,20 +73,19 @@ namespace TaskManager.API.Controllers
             bool isBoardOwner = board.OwnerId == currentUserId;
             bool isBoardEditor = board.SharedWithUsers != null && board.SharedWithUsers.Any(ub => ub.UserId == currentUserId && ub.AccessLevel == "Editor");
 
-            if (!isBoardOwner && !isBoardEditor)
-            {
-                return Forbid(); 
-            }
+            if (!isBoardOwner && !isBoardEditor) return Forbid(); 
 
             task.UserId = currentUserId;
 
             _context.Tasks.Add(task);
-            await _context.SaveChangesAsync();
+            
+            // 💡 ІСТОРІЯ: Фіксуємо створення
+            await LogActivity(board.Id, currentUserId, $"створив(ла) задачу '{task.Title}'");
 
+            await _context.SaveChangesAsync();
             return Ok(task);
         }
 
-        // PUT: api/tasks/5
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTask(int id, TaskItem updatedTask)
         {
@@ -84,7 +93,6 @@ namespace TaskManager.API.Controllers
 
             var currentUserId = GetCurrentUserId();
 
-            // 💡 ВІДШЛІФОВАНО: Додано `!` для методів Include, щоб компілятор не хвилювався
             var existingTask = await _context.Tasks
                 .Include(t => t.Column)
                     .ThenInclude(c => c!.Board)
@@ -93,10 +101,10 @@ namespace TaskManager.API.Controllers
 
             if (existingTask == null) return NotFound();
 
-            // 💡 ВІДШЛІФОВАНО: Залізобетонна перевірка без використання `?.`
             bool isTaskCreator = existingTask.UserId == currentUserId;
             bool isBoardOwner = false;
             bool isBoardEditor = false;
+            int boardId = existingTask.Column!.BoardId; 
 
             if (existingTask.Column != null && existingTask.Column.Board != null)
             {
@@ -108,9 +116,15 @@ namespace TaskManager.API.Controllers
                 }
             }
 
-            if (!isTaskCreator && !isBoardOwner && !isBoardEditor)
+            if (!isTaskCreator && !isBoardOwner && !isBoardEditor) return Forbid(); 
+
+            // 💡 ІСТОРІЯ: Визначаємо, що саме змінилося (переміщення чи редагування)
+            string actionDetail = $"оновив(ла) задачу '{updatedTask.Title}'";
+            if (existingTask.ColumnId != updatedTask.ColumnId)
             {
-                return Forbid(); 
+                // Якщо змінилась колонка - значить задачу перетягнули
+                var newColumn = await _context.BoardColumns.FindAsync(updatedTask.ColumnId);
+                actionDetail = $"перемістив(ла) задачу '{updatedTask.Title}' у колонку '{newColumn?.Title}'";
             }
 
             existingTask.Title = updatedTask.Title;
@@ -119,19 +133,14 @@ namespace TaskManager.API.Controllers
             existingTask.Complexity = updatedTask.Complexity;
             existingTask.ColumnId = updatedTask.ColumnId;
             
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                return StatusCode(500, "Помилка при оновленні бази даних.");
-            }
+            await LogActivity(boardId, currentUserId, actionDetail);
+
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateConcurrencyException) { return StatusCode(500, "Помилка при оновленні бази даних."); }
 
             return NoContent();
         }
 
-        // DELETE: api/tasks/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTask(int id)
         {
@@ -148,8 +157,8 @@ namespace TaskManager.API.Controllers
             bool isTaskCreator = task.UserId == currentUserId;
             bool isBoardOwner = false;
             bool isBoardEditor = false;
+            int boardId = task.Column!.BoardId;
 
-            // 💡 ВІДШЛІФОВАНО: Класична перевірка замість магічних символів
             if (task.Column != null && task.Column.Board != null)
             {
                 isBoardOwner = task.Column.Board.OwnerId == currentUserId;
@@ -160,15 +169,49 @@ namespace TaskManager.API.Controllers
                 }
             }
 
-            if (!isTaskCreator && !isBoardOwner && !isBoardEditor)
-            {
-                return Forbid(); 
-            }
+            if (!isTaskCreator && !isBoardOwner && !isBoardEditor) return Forbid(); 
+
+            // 💡 ІСТОРІЯ: Фіксуємо видалення
+            await LogActivity(boardId, currentUserId, $"видалив(ла) задачу '{task.Title}'");
 
             _context.Tasks.Remove(task);
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        // 💡 НОВИЙ МЕТОД: Отримання історії для конкретної дошки
+        [HttpGet("history/{boardId}")]
+        public async Task<IActionResult> GetBoardHistory(int boardId)
+        {
+            var currentUserId = GetCurrentUserId();
+
+            // Перевіряємо, чи має юзер доступ до дошки (щоб чужі не підглядали)
+            var board = await _context.Boards
+                .Include(b => b.SharedWithUsers)
+                .FirstOrDefaultAsync(b => b.Id == boardId);
+
+            if (board == null) return NotFound("Дошку не знайдено");
+
+            bool hasAccess = board.OwnerId == currentUserId || 
+                            (board.SharedWithUsers != null && board.SharedWithUsers.Any(ub => ub.UserId == currentUserId));
+
+            if (!hasAccess) return Forbid();
+
+            // Повертаємо останні 50 дій
+            var history = await _context.BoardActivities
+                .Include(a => a.User)
+                .Where(a => a.BoardId == boardId)
+                .OrderByDescending(a => a.Timestamp)
+                .Take(50)
+                .Select(a => new {
+                    username = a.User!.Username,
+                    action = a.ActionDescription,
+                    timestamp = a.Timestamp
+                })
+                .ToListAsync();
+
+            return Ok(history);
         }
     }
 }

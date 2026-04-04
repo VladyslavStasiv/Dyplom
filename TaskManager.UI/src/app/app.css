@@ -1,47 +1,108 @@
-/* 💡 ОНОВЛЕНО: Сучасна кольорова гама, світлий фон для зручності читання */
+/* ==========================================================
+   💡 ЗМІННІ КОЛЬОРІВ (Виправлено спеціально для Angular)
+   ========================================================== */
 .board-container {
+  /* СВІТЛА ТЕМА (Твій оригінальний дизайн) */
+  --bg-color: #f4f7f6;
+  --text-main: #333333;
+  --text-title: #2c3e50;
+  --text-muted: #6c757d;
+  --border-header: #e9ecef;
+  --select-bg: #ffffff;
+  --select-border: #ced4da;
+  --column-bg: #e9ecef;
+  --column-hover: #e2e6ea;
+  --column-border: #dee2e6;
+  --card-bg: #ffffff;
+  --card-border: #dee2e6;
+  --card-hover-border: #ced4da;
+  --shadow-sm: rgba(0,0,0,0.05);
+  --shadow-md: rgba(0,0,0,0.1);
+  --shadow-lg: rgba(0,0,0,0.2);
+  --modal-bg: #ffffff;
+  --input-bg: #ffffff;
+
+  /* Базові стилі контейнера */
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f4f7f6; /* Легкий світло-сірий замість важкого синього */
+  background-color: var(--bg-color);
   min-height: 100vh;
   padding: 20px;
-  color: #333;
+  color: var(--text-main);
+  transition: background-color 0.3s;
 }
 
-/* 💡 ОНОВЛЕНО: Шапка тепер виглядає легше і сучасніше */
+/* ТЕМНА ТЕМА */
+.board-container.dark-theme {
+  --bg-color: #121212;
+  --text-main: #e0e0e0;
+  --text-title: #ffffff;
+  --text-muted: #9ca3af;
+  --border-header: #333333;
+  --select-bg: #1e1e1e;
+  --select-border: #444444;
+  --column-bg: #1e1e1e;
+  --column-hover: #2a2a2a;
+  --column-border: #333333;
+  --card-bg: #2d2d2d;
+  --card-border: #3d3d3d;
+  --card-hover-border: #555555;
+  --shadow-sm: rgba(0,0,0,0.3);
+  --shadow-md: rgba(0,0,0,0.5);
+  --shadow-lg: rgba(0,0,0,0.7);
+  --modal-bg: #2d2d2d;
+  --input-bg: #1e1e1e;
+}
+
+/* ==========================================================
+   ГЛОБАЛЬНЕ СКИДАННЯ ВІДСТУПІВ БРАУЗЕРА (Щоб не було білих рамок)
+   ========================================================== */
+::ng-deep body {
+  margin: 0;
+  padding: 0;
+  background-color: #f4f7f6;
+}
+
+::ng-deep body:has(.dark-theme) {
+  background-color: #121212;
+}
+
+/* ==========================================================
+   ОРИГІНАЛЬНИЙ ДИЗАЙН
+   ========================================================== */
+
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding-bottom: 20px;
-  border-bottom: 2px solid #e9ecef;
+  border-bottom: 2px solid var(--border-header);
   margin-bottom: 20px;
 }
 
 .header-titles h1 {
   margin: 0;
   font-size: 1.8rem;
-  color: #2c3e50; /* Темно-сірий/синій колір тексту */
-  text-shadow: none; /* Прибрали застарілу тінь */
+  color: var(--text-title);
+  text-shadow: none;
 }
 
 .welcome-text {
   display: block;
   margin-top: 5px;
   font-size: 1.1rem;
-  color: #6c757d;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
-/* 💡 НОВЕ: Стилі для випадаючого списку дошок */
 .board-select {
   padding: 8px 12px;
   border-radius: 6px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--select-border);
   font-size: 0.95rem;
   font-weight: 600;
-  color: #495057;
+  color: var(--text-muted);
   cursor: pointer;
-  background-color: white;
+  background-color: var(--select-bg);
   transition: border-color 0.2s;
 }
 
@@ -50,8 +111,7 @@ header {
   border-color: #17a2b8;
 }
 
-/* 💡 ОНОВЛЕНО: Уніфіковані кнопки в шапці */
-.logout-btn, .add-btn {
+.logout-btn, .add-btn, .export-btn, .theme-toggle {
   padding: 8px 16px;
   border-radius: 6px;
   border: none;
@@ -60,13 +120,25 @@ header {
   transition: 0.2s;
 }
 
+.export-btn, .theme-toggle {
+  background-color: var(--column-bg);
+  color: var(--text-title);
+  border: 1px solid var(--select-border);
+  margin-right: 5px;
+}
+
+.export-btn:hover, .theme-toggle:hover {
+  background-color: #00768c;
+  color: white;
+}
+
 .logout-btn {
-  background-color: #d32f2f;
+  background-color: #b91c1c;
   color: #ffffff;
 }
 
 .logout-btn:hover {
-  background-color: #b71c1c;
+  background-color: #7f1d1d;
 }
 
 .add-btn {
@@ -78,7 +150,6 @@ header {
   background-color: #005c6e;
 }
 
-/* Кнопка "Додати задачу" всередині колонки */
 .column .add-btn {
   width: 100%;
   margin-bottom: 15px;
@@ -91,23 +162,22 @@ header {
   align-items: flex-start;
 }
 
-/* 💡 ОНОВЛЕНО: Колонки стали трохи світлішими */
 .column {
-  background-color: #e9ecef;
+  background-color: var(--column-bg);
   border-radius: 12px;
   width: 320px;
   padding: 15px;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--column-border);
   transition: background-color 0.3s ease;
 }
 
 .column:hover {
-  background-color: #e2e6ea;
+  background-color: var(--column-hover);
 }
 
 .column h2 {
   font-size: 1.1rem;
-  color: #495057;
+  color: var(--text-muted);
   margin-top: 0;
   margin-bottom: 15px;
   padding-left: 5px;
@@ -115,14 +185,13 @@ header {
   letter-spacing: 0.5px;
 }
 
-/* 💡 ОНОВЛЕНО: Картки задач */
 .task-card {
-  background-color: #ffffff;
+  background-color: var(--card-bg);
   border-radius: 8px;
   padding: 15px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  border: 1px solid #dee2e6;
+  box-shadow: 0 2px 4px var(--shadow-sm);
+  border: 1px solid var(--card-border);
   cursor: grab;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
   position: relative;
@@ -131,17 +200,16 @@ header {
 .task-card:active {
   cursor: grabbing;
   transform: scale(0.97);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 16px var(--shadow-md);
   opacity: 0.9;
-  z-index: 20; /* Щоб під час перетягування картка теж була зверху */
+  z-index: 20;
 }
 
-/* 💡 ВИПРАВЛЕНО ТУТ: Додано z-index: 10 */
 .task-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  border-color: #ced4da;
-  z-index: 10; /* Піднімаємо поточну картку (і її підказку) над усіма іншими! */
+  box-shadow: 0 4px 10px var(--shadow-md);
+  border-color: var(--card-hover-border);
+  z-index: 10;
 }
 
 .task-card-header {
@@ -153,24 +221,23 @@ header {
 .task-card h3 {
   margin: 0 0 10px 0;
   font-size: 1rem;
-  color: #2c3e50;
+  color: var(--text-title);
   line-height: 1.3;
 }
 
 .task-card p {
   margin: 0;
   font-size: 0.85rem;
-  color: #6c757d;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
-/* Форма створення/редагування задачі */
 .task-form {
-  background-color: #ffffff;
+  background-color: var(--card-bg);
   padding: 15px;
   border-radius: 8px;
   margin-bottom: 15px;
-  border: 1px solid #17a2b8; /* Підсвітка форми */
+  border: 1px solid #17a2b8;
   box-shadow: 0 4px 10px rgba(23,162,184, 0.05);
   display: flex;
   flex-direction: column;
@@ -180,7 +247,9 @@ header {
 .task-form input, .task-form textarea {
   width: 100%;
   padding: 8px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--select-border);
+  background-color: var(--input-bg);
+  color: var(--text-main);
   border-radius: 4px;
   font-family: inherit;
   box-sizing: border-box;
@@ -197,11 +266,11 @@ header {
   justify-content: space-between;
   align-items: center;
   font-size: 0.9rem;
-  color: #495057;
+  color: var(--text-muted);
 }
 
 .save-btn {
-  background-color: #2e7d32;
+  background-color: #047857;
   color: #ffffff;
   border: none;
   padding: 8px;
@@ -216,7 +285,6 @@ header {
   background-color: #1b5e20;
 }
 
-/* Іконки редагування та видалення */
 .edit-btn {
   background: none;
   border: none;
@@ -235,7 +303,7 @@ header {
 .delete-btn {
   background: none;
   border: none;
-  color: #c1c7d0;
+  color: var(--select-border);
   cursor: pointer;
   font-size: 1rem;
   padding: 0 0 5px 5px;
@@ -246,21 +314,19 @@ header {
   color: #e74c3c;
 }
 
-/* Кольорові мітки для колонок */
 .in-progress-card {
   border-left: 4px solid #f1c40f;
 }
 
 .done-card {
-  background-color: #f8f9fa;
+  background-color: var(--bg-color);
   border-left: 4px solid #28a745;
 }
 
 /* ==========================================================
-   💡 СТИЛІ МОДАЛЬНОГО ВІКНА (КЕРУВАННЯ ДОСТУПОМ)
+   МОДАЛЬНЕ ВІКНО
    ========================================================== */
 
-/* Темний напівпрозорий фон, що перекриває весь сайт */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -269,18 +335,18 @@ header {
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  backdrop-filter: blur(2px); /* Розмиття заднього фону (сучасний ефект) */
+  backdrop-filter: blur(2px);
 }
 
-/* Саме біле віконце по центру */
 .modal-content {
-  background-color: #ffffff;
+  background-color: var(--modal-bg);
   width: 450px;
   max-width: 90%;
   border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  animation: slideDown 0.3s ease-out; /* Плавна поява */
+  box-shadow: 0 10px 25px var(--shadow-lg);
+  animation: slideDown 0.3s ease-out;
+  color: var(--text-main);
 }
 
 @keyframes slideDown {
@@ -292,16 +358,23 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 2px solid #e9ecef;
+  border-bottom: 2px solid var(--border-header);
   padding-bottom: 15px;
   margin-bottom: 15px;
+}
+
+/* 💡 ВІДШЛІФОВАНО: Об'єднаний селектор для заголовка модалки (БЕЗ ДУБЛІКАТІВ) */
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--text-title) !important;
 }
 
 .modal-header .close-btn {
   background: none;
   border: none;
   font-size: 1.2rem;
-  color: #6c757d;
+  color: var(--text-muted);
   cursor: pointer;
   transition: color 0.2s;
 }
@@ -310,7 +383,6 @@ header {
   color: #d32f2f;
 }
 
-/* Список користувачів */
 .user-list {
   list-style: none;
   padding: 0;
@@ -322,12 +394,12 @@ header {
   justify-content: space-between;
   align-items: center;
   padding: 12px 10px;
-  border-bottom: 1px solid #f1f3f5;
+  border-bottom: 1px solid var(--border-header);
   transition: background-color 0.2s;
 }
 
 .user-list li:hover {
-  background-color: #f8f9fa;
+  background-color: var(--column-bg);
   border-radius: 6px;
 }
 
@@ -336,11 +408,10 @@ header {
   flex-direction: column;
 }
 
-/* Кнопка видалення користувача (Хрестик) */
 .revoke-btn {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
   border-radius: 4px;
   padding: 5px 10px;
   cursor: pointer;
@@ -349,18 +420,18 @@ header {
 }
 
 .revoke-btn:hover {
-  background-color: #f5c6cb;
-  color: #491217;
+  background-color: #fee2e2;
+  color: #7f1d1d;
 }
 
 /* ==========================================================
-   💡 НОВЕ: ПАНЕЛЬ ІНСТРУМЕНТІВ (ПОШУК)
+   ПАНЕЛЬ ІНСТРУМЕНТІВ (ПОШУК)
    ========================================================== */
 .toolbar {
   padding: 0 30px;
   margin-bottom: 20px;
   display: flex;
-  justify-content: flex-end; /* Вирівнюємо пошук по правому краю */
+  justify-content: flex-end;
 }
 
 .search-container {
@@ -373,20 +444,20 @@ header {
   left: 15px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6c757d;
+  color: var(--text-muted);
   font-size: 1.1rem;
 }
 
 .search-input {
   width: 100%;
-  padding: 10px 15px 10px 45px; /* Відступ зліва для іконки */
+  padding: 10px 15px 10px 45px;
   border-radius: 20px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--select-border);
   font-size: 0.95rem;
-  color: #495057;
+  color: var(--text-main);
   transition: all 0.3s ease;
   box-sizing: border-box;
-  background-color: #ffffff;
+  background-color: var(--input-bg);
 }
 
 .search-input:focus {
@@ -396,14 +467,14 @@ header {
 }
 
 /* ==========================================================
-   💡 НОВЕ: ДАШБОРД (СТАТИСТИКА)
+   ДАШБОРД (СТАТИСТИКА)
    ========================================================== */
 .dashboard {
-  background-color: #ffffff;
+  background-color: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
   margin: 0 30px 30px 30px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 10px var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -416,18 +487,18 @@ header {
 
 .stat-card {
   flex: 1;
-  background-color: #f8f9fa;
+  background-color: var(--bg-color);
   border-radius: 8px;
   padding: 15px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--border-header);
 }
 
 .stat-title {
   font-size: 0.9rem;
-  color: #6c757d;
+  color: var(--text-muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -436,7 +507,7 @@ header {
 .stat-value {
   font-size: 2rem;
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--text-title);
   margin-top: 5px;
 }
 
@@ -449,13 +520,13 @@ header {
   justify-content: space-between;
   margin-bottom: 8px;
   font-weight: bold;
-  color: #495057;
+  color: var(--text-muted);
 }
 
 .progress-bar-container {
   width: 100%;
   height: 12px;
-  background-color: #e9ecef;
+  background-color: var(--border-header);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -468,27 +539,26 @@ header {
 }
 
 /* ==========================================================
-   💡 НОВЕ: СПЛИВАЮЧА ПІДКАЗКА (TOOLTIP)
+   СПЛИВАЮЧА ПІДКАЗКА (TOOLTIP)
    ========================================================== */
 
 .task-tooltip {
   position: absolute;
-  top: 100%; /* З'являється знизу під карткою */
+  top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #2c3e50; /* Темний елегантний фон */
+  background-color: #2c3e50;
   color: #ffffff;
   padding: 12px;
   border-radius: 8px;
   width: 220px;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-  z-index: 1000; /* Щоб завжди була поверх інших елементів */
-  pointer-events: none; /* Щоб підказка не заважала Drag & Drop */
+  box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+  z-index: 1000;
+  pointer-events: none;
   margin-top: 10px;
   animation: fadeIn 0.2s ease-in-out;
 }
 
-/* Створюємо маленький трикутничок-вказівник зверху підказки */
 .task-tooltip::before {
   content: '';
   position: absolute;
@@ -500,8 +570,208 @@ header {
   border-color: transparent transparent #2c3e50 transparent;
 }
 
-/* Плавна поява віконця */
 @keyframes fadeIn {
   from { opacity: 0; transform: translate(-50%, -5px); }
   to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ==========================================================
+   ДЕДЛАЙНИ (Звичайні та Прострочені)
+   ========================================================== */
+.deadline-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 8px !important;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.3s;
+}
+
+.overdue-text {
+  color: #b91c1c !important;
+  font-weight: 600;
+}
+
+.overdue-badge {
+  background-color: #feeceb;
+  color: #b91c1c;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border: 1px solid #f5c6cb;
+  animation: pulseWarning 2s infinite;
+}
+
+@keyframes pulseWarning {
+  0% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(211, 47, 47, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0); }
+}
+
+/* ==========================================================
+   ОЧИЩЕНІ СТИЛІ ДЛЯ ФОРМИ В МОДАЛЬНИХ ВІКНАХ
+   ========================================================== */
+.share-modal-content {
+  max-width: 400px;
+}
+
+.modal-form {
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  background-color: transparent !important;
+}
+
+.modal-label {
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: var(--text-muted);
+  display: block;
+}
+
+.modal-empty-text {
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.modal-muted-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.role-badge {
+  color: #f39c12;
+  font-weight: bold;
+  margin-left: 5px;
+}
+
+/* Допоміжні класи для відступів */
+.mt-5 { margin-top: 5px; }
+.mt-15 { margin-top: 15px; }
+.mt-20 { margin-top: 20px; }
+.w-100 { width: 100%; font-size: 1rem; }
+
+/* ==========================================================
+   🔔 ДЗВІНОЧОК ТА ЗАПРОШЕННЯ
+   ========================================================== */
+.bell-btn {
+  background-color: var(--column-bg);
+  border: 1px solid var(--select-border);
+  color: var(--text-title);
+  /* 💡 ВИПРАВЛЕНО: Зменшили відступи зверху/знизу (було 8px, стало 6px) */
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  /* 💡 ВИПРАВЛЕНО: Трохи менший розмір, щоб емодзі не розтягувало кнопку */
+  font-size: 1.1rem;
+  line-height: 1.2; /* 💡 Забрали зайве "повітря" навколо іконки */
+  transition: 0.2s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bell-btn:hover {
+  background-color: #00768c; /* 💡 ВИПРАВЛЕНО: Більш контрастний синьо-зелений фон */
+  color: white;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #b91c1c; /* 💡 ВИПРАВЛЕНО: Глибший червоний для ідеального контрасту з білим */
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-color);
+  animation: pulseWarning 2s infinite;
+}
+
+/* ==========================================================
+   💬 ВЛАСНІ ДІАЛОГОВІ ВІКНА (ALERT & CONFIRM)
+   ========================================================== */
+.dialog-modal {
+  max-width: 380px !important; /* Робимо їх меншими за звичайні вікна */
+  padding: 20px !important;
+}
+
+.dialog-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  line-height: 1;
+}
+
+.dialog-text {
+  font-size: 1.1rem;
+  color: var(--text-title);
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ==========================================================
+   🛠️ КЛАСИ ДЛЯ ЗАМІНИ ІНЛАЙН-СТИЛІВ (Очищення HTML)
+   ========================================================== */
+
+/* Шапка та кнопки */
+.header-actions { display: flex; gap: 10px; align-items: center; }
+.btn-manage { background-color: #f39c12 !important; }
+.btn-share { background-color: #28a745 !important; }
+
+/* Статистика дашборду */
+.stat-todo { color: #e74c3c; }
+.stat-in-progress { color: #f39c12; }
+.stat-done { color: #2ecc71; }
+
+/* Картки задач */
+.task-actions { display: flex; gap: 5px; }
+.tooltip-desc { margin: 5px 0 0 0; font-size: 0.8rem; line-height: 1.3; }
+.task-title-done { text-decoration: line-through; color: #808080; }
+.task-status-done { color: #5aac44; font-weight: bold; margin-top: 10px; }
+
+/* Запрошення та Доступи */
+.invitation-title { color: var(--text-title); font-size: 1.05rem; }
+.invitation-actions { display: flex; gap: 10px; }
+.btn-small { margin: 0; padding: 6px 12px; }
+.pending-status { color: #e74c3c; font-size: 0.8rem; margin-left: 5px; }
+
+/* Модальні вікна (Alert/Confirm) */
+.dialog-body { text-align: center; padding: 10px; }
+.dialog-actions { display: flex; gap: 10px; margin-top: 20px; }
+.btn-dialog { flex: 1; margin: 0; padding: 10px; }
+
+/* 💡 НОВЕ: Дизайн для багатокритеріального пріоритету */
+.priority-container { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.priority-label { font-size: 0.85rem; color: var(--text-muted); font-weight: bold; }
+.priority-badge {
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* ==========================================================
+   РЕКОМЕНДАЦІЙНА СИСТЕМА (Анімація фокусу)
+   ========================================================== */
+.recommended-highlight {
+  border: 2px solid #9b59b6 !important;
+  box-shadow: 0 0 20px rgba(155, 89, 182, 0.4) !important;
+  animation: pulseRecommend 1.5s infinite;
+  transform: scale(1.02);
+  z-index: 100;
+  transition: all 0.3s ease-in-out;
+}
+
+@keyframes pulseRecommend {
+  0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.6); }
+  70% { box-shadow: 0 0 0 15px rgba(155, 89, 182, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0); }
 }

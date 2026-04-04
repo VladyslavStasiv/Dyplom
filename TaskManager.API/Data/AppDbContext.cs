@@ -10,18 +10,18 @@ namespace TaskManager.API.Data
         public DbSet<TaskItem> Tasks { get; set; }
         public DbSet<BoardColumn> BoardColumns { get; set; }
         public DbSet<Board> Boards { get; set; }
-        
-        // НОВІ ТАБЛИЦІ:
         public DbSet<User> Users { get; set; }
         public DbSet<UserBoard> UserBoards { get; set; }
+        
+        // 💡 НОВА ТАБЛИЦЯ: Історія дій
+        public DbSet<BoardActivity> BoardActivities { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Налаштування зв'язку "Багато-до-багатьох" для спільного доступу
             modelBuilder.Entity<UserBoard>()
-                .HasKey(ub => new { ub.UserId, ub.BoardId }); // Складений первинний ключ
+                .HasKey(ub => new { ub.UserId, ub.BoardId }); 
 
             modelBuilder.Entity<UserBoard>()
                 .HasOne(ub => ub.User)
@@ -33,12 +33,11 @@ namespace TaskManager.API.Data
                 .WithMany(b => b.SharedWithUsers)
                 .HasForeignKey(ub => ub.BoardId);
 
-            // Налаштування зв'язку "Власник -> Дошка"
             modelBuilder.Entity<Board>()
                 .HasOne(b => b.Owner)
                 .WithMany(u => u.OwnedBoards)
                 .HasForeignKey(b => b.OwnerId)
-                .OnDelete(DeleteBehavior.Restrict); // Захист від випадкового видалення
+                .OnDelete(DeleteBehavior.Restrict); 
         }
     }
 }

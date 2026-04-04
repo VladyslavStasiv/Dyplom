@@ -1,11 +1,23 @@
 @if (authService.isLoggedIn() && columns.length > 0) {
-  <div class="board-container">
+  <div class="board-container" [class.dark-theme]="isDarkMode">
     <header>
       <div class="header-titles">
         <h1>Дипломна робота: Task Manager</h1>
         <span class="welcome-text">Привіт, {{ username }}! 👋</span>
       </div>
-      <div style="display: flex; gap: 10px; align-items: center;">
+      <div class="header-actions">
+
+        <button class="bell-btn" (click)="openInvitationsModal()" title="Запрошення">
+          🔔
+          @if (invitations.length > 0) {
+            <span class="notification-badge">{{ invitations.length }}</span>
+          }
+        </button>
+
+        <button class="export-btn" (click)="exportToCSV()" title="Завантажити звіт у CSV">📊 Звіт</button>
+        <button class="theme-toggle" (click)="toggleDarkMode()" title="Змінити тему">
+          {{ isDarkMode ? '☀️' : '🌙' }}
+        </button>
 
         @if (boards.length > 1) {
           <select class="board-select" (change)="onBoardChange($event)" [value]="currentBoardId">
@@ -18,17 +30,18 @@
         }
 
         @if (isCurrentBoardOwner) {
-          <button class="add-btn" style="background-color: #f39c12;" (click)="openAccessModal()">⚙️ Керування</button>
-        }
-
-        @if (canEdit) {
-          <button class="add-btn" style="background-color: #28a745;" (click)="openShareModal()">🤝 Поділитися</button>
+          <button class="add-btn btn-manage" (click)="openAccessModal()">⚙️ Керування</button>
+          <button class="add-btn btn-share" (click)="openShareModal()">🤝 Поділитися</button>
         }
         <button class="logout-btn" (click)="logout()">Вийти</button>
       </div>
     </header>
 
-    <div class="toolbar">
+    <div class="toolbar" style="justify-content: space-between;">
+      <button class="add-btn" style="background-color: #8e44ad;" (click)="recommendNextTask()" title="Підказати найважливішу задачу">
+        🎯 Що робити далі?
+      </button>
+
       <div class="search-container">
         <span class="search-icon">🔍</span>
         <input type="text" class="search-input" placeholder="Пошук задач за назвою або описом..." [(ngModel)]="searchQuery">
@@ -43,15 +56,15 @@
         </div>
         <div class="stat-card">
           <span class="stat-title">До виконання</span>
-          <span class="stat-value" style="color: #e74c3c;">{{ todoCount }}</span>
+          <span class="stat-value stat-todo">{{ todoCount }}</span>
         </div>
         <div class="stat-card">
           <span class="stat-title">В процесі</span>
-          <span class="stat-value" style="color: #f39c12;">{{ inProgressCount }}</span>
+          <span class="stat-value stat-in-progress">{{ inProgressCount }}</span>
         </div>
         <div class="stat-card">
           <span class="stat-title">Готово</span>
-          <span class="stat-value" style="color: #2ecc71;">{{ doneCount }}</span>
+          <span class="stat-value stat-done">{{ doneCount }}</span>
         </div>
       </div>
 
@@ -72,7 +85,7 @@
         <h2>{{ columns[0].title }}</h2>
 
         @if (canEdit) {
-          <button class="add-btn" (click)="showForm ? resetForm() : showForm = true">
+          <button class="add-btn w-100" style="margin-bottom: 15px;" (click)="showForm ? resetForm() : showForm = true">
             {{ showForm ? '✖ Скасувати' : '➕ Додати задачу' }}
           </button>
         }
@@ -95,26 +108,40 @@
 
         @for (task of filteredTasks; track task.id) {
           @if (task.columnId === columns[0].id) {
-            <div class="task-card" [draggable]="canEdit" (dragstart)="onDragStart(task)"
+            <div class="task-card"
+                 id="task-{{ task.id }}"
+                 [class.recommended-highlight]="recommendedTaskId === task.id"
+                 [draggable]="canEdit" (dragstart)="onDragStart(task)"
                  (mouseenter)="onMouseEnter(task)" (mouseleave)="onMouseLeave()">
 
               <div class="task-card-header">
                 <h3>{{ task.title }}</h3>
                 @if (canEdit) {
-                  <div style="display: flex; gap: 5px;">
+                  <div class="task-actions">
                     <button class="edit-btn" (click)="openEditForm(task)" title="Редагувати">✏️</button>
                     <button class="delete-btn" (click)="deleteTask(task.id)" title="Видалити">✖</button>
                   </div>
                 }
               </div>
 
-              <p>Пріоритет: {{ task.priorityScore }} 🔴</p>
-              <p style="font-size: 0.8rem; color: #808080;">Дедлайн: {{ task.deadline | date:'short' }}</p>
+              <div class="priority-container">
+                <span class="priority-label">Пріоритет:</span>
+                <span class="priority-badge" [style.background-color]="getPriorityConfig(task.priorityScore).color">
+                  {{ getPriorityConfig(task.priorityScore).icon }} {{ getPriorityConfig(task.priorityScore).text }} ({{ task.priorityScore }})
+                </span>
+              </div>
+
+              @if (task.deadline) {
+                <p class="deadline-text" [class.overdue-text]="isOverdue(task)">
+                  ⏳ {{ task.deadline | date:'short' }}
+                  @if (isOverdue(task)) { <span class="overdue-badge">⚠️ Прострочено!</span> }
+                </p>
+              }
 
               @if (hoveredTaskId === task.id) {
                 <div class="task-tooltip">
                   <strong>📝 Опис:</strong>
-                  <p style="margin: 5px 0 0 0; font-size: 0.8rem; line-height: 1.3;">{{ task.description }}</p>
+                  <p class="tooltip-desc">{{ task.description }}</p>
                 </div>
               }
             </div>
@@ -127,25 +154,40 @@
 
         @for (task of filteredTasks; track task.id) {
           @if (task.columnId === columns[1].id) {
-            <div class="task-card in-progress-card" [draggable]="canEdit" (dragstart)="onDragStart(task)"
+            <div class="task-card in-progress-card"
+                 id="task-{{ task.id }}"
+                 [class.recommended-highlight]="recommendedTaskId === task.id"
+                 [draggable]="canEdit" (dragstart)="onDragStart(task)"
                  (mouseenter)="onMouseEnter(task)" (mouseleave)="onMouseLeave()">
 
               <div class="task-card-header">
                 <h3>{{ task.title }}</h3>
                 @if (canEdit) {
-                  <div style="display: flex; gap: 5px;">
+                  <div class="task-actions">
                     <button class="edit-btn" (click)="openEditForm(task)" title="Редагувати">✏️</button>
                     <button class="delete-btn" (click)="deleteTask(task.id)" title="Видалити">✖</button>
                   </div>
                 }
               </div>
 
-              <p>Пріоритет: {{ task.priorityScore }} 🟡</p>
+              <div class="priority-container">
+                <span class="priority-label">Пріоритет:</span>
+                <span class="priority-badge" [style.background-color]="getPriorityConfig(task.priorityScore).color">
+                  {{ getPriorityConfig(task.priorityScore).icon }} {{ getPriorityConfig(task.priorityScore).text }} ({{ task.priorityScore }})
+                </span>
+              </div>
+
+              @if (task.deadline) {
+                <p class="deadline-text" [class.overdue-text]="isOverdue(task)">
+                  ⏳ {{ task.deadline | date:'short' }}
+                  @if (isOverdue(task)) { <span class="overdue-badge">⚠️ Прострочено!</span> }
+                </p>
+              }
 
               @if (hoveredTaskId === task.id) {
                 <div class="task-tooltip">
                   <strong>📝 Опис:</strong>
-                  <p style="margin: 5px 0 0 0; font-size: 0.8rem; line-height: 1.3;">{{ task.description }}</p>
+                  <p class="tooltip-desc">{{ task.description }}</p>
                 </div>
               }
             </div>
@@ -158,25 +200,32 @@
 
         @for (task of filteredTasks; track task.id) {
           @if (task.columnId === columns[2].id) {
-            <div class="task-card done-card" [draggable]="canEdit" (dragstart)="onDragStart(task)"
+            <div class="task-card done-card"
+                 id="task-{{ task.id }}"
+                 [class.recommended-highlight]="recommendedTaskId === task.id"
+                 [draggable]="canEdit" (dragstart)="onDragStart(task)"
                  (mouseenter)="onMouseEnter(task)" (mouseleave)="onMouseLeave()">
 
               <div class="task-card-header">
-                <h3 style="text-decoration: line-through; color: #808080;">{{ task.title }}</h3>
+                <h3 class="task-title-done">{{ task.title }}</h3>
                 @if (canEdit) {
-                  <div style="display: flex; gap: 5px;">
+                  <div class="task-actions">
                     <button class="edit-btn" (click)="openEditForm(task)" title="Редагувати">✏️</button>
                     <button class="delete-btn" (click)="deleteTask(task.id)" title="Видалити">✖</button>
                   </div>
                 }
               </div>
 
-              <p style="color: #5aac44; font-weight: bold;">Виконано! 🎉</p>
+              <p class="task-status-done">Виконано! 🎉</p>
+
+              @if (task.deadline) {
+                <p class="deadline-text">⏳ {{ task.deadline | date:'short' }}</p>
+              }
 
               @if (hoveredTaskId === task.id) {
                 <div class="task-tooltip">
                   <strong>📝 Опис:</strong>
-                  <p style="margin: 5px 0 0 0; font-size: 0.8rem; line-height: 1.3;">{{ task.description }}</p>
+                  <p class="tooltip-desc">{{ task.description }}</p>
                 </div>
               }
             </div>
@@ -185,70 +234,146 @@
       </div>
 
     </div>
-  </div>
 
-  @if (showAccessModal) {
-    <div class="modal-overlay" (document:keydown.escape)="closeAccessModal()">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 style="margin: 0; color: #2c3e50;">Керування доступом</h2>
-          <button class="close-btn" (click)="closeAccessModal()" title="Закрити">✖</button>
-        </div>
+    @if (showInvitationsModal) {
+      <div class="modal-overlay" (document:keydown.escape)="closeInvitationsModal()">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Нові запрошення</h2>
+            <button class="close-btn" (click)="closeInvitationsModal()" title="Закрити">✖</button>
+          </div>
 
-        <div class="modal-body">
-          @if (sharedUsers.length === 0) {
-            <p style="color: #6c757d; text-align: center;">Ця дошка поки що нікому не доступна. Ви можете запросити користувачів, натиснувши кнопку "Поділитися".</p>
-          } @else {
+          <div class="modal-body">
             <ul class="user-list">
-              @for (user of sharedUsers; track user.id) {
+              @for (inv of invitations; track inv.boardId) {
                 <li>
                   <div class="user-info">
-                    <strong>{{ user.username }}</strong>
-                    <span style="font-size: 0.85rem; color: #6c757d;">
-                      ({{ user.email }})
-                      <span style="color: #f39c12; font-weight: bold; margin-left: 5px;">
-                        [{{ user.accessLevel === 'Editor' ? 'Редактор' : 'Читач' }}]
-                      </span>
+                    <strong class="invitation-title">"{{ inv.boardTitle }}"</strong>
+                    <span class="modal-muted-text">
+                      Від: {{ inv.ownerName }}
+                      <span class="role-badge">[{{ inv.accessLevel === 'Editor' ? 'Редактор' : 'Читач' }}]</span>
                     </span>
                   </div>
-                  <button class="revoke-btn" (click)="revokeAccess(user.id)" title="Забрати доступ">✖</button>
+                  <div class="invitation-actions">
+                    <button class="save-btn btn-small" (click)="acceptInvitation(inv.boardId)" title="Прийняти">✔</button>
+                    <button class="revoke-btn btn-small" (click)="declineInvitation(inv.boardId)" title="Відхилити">✖</button>
+                  </div>
                 </li>
               }
             </ul>
-          }
-        </div>
-      </div>
-    </div>
-  }
-
-  @if (showShareModal) {
-    <div class="modal-overlay" (document:keydown.escape)="closeShareModal()">
-      <div class="modal-content" style="max-width: 400px;">
-        <div class="modal-header">
-          <h2 style="margin: 0; color: #2c3e50;">Поділитися дошкою</h2>
-          <button class="close-btn" (click)="closeShareModal()" title="Закрити">✖</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="task-form" style="box-shadow: none; border: none; padding: 0;">
-            <label style="font-size: 0.9rem; font-weight: bold; color: #495057;">Email користувача:</label>
-            <input type="email" placeholder="Введіть email..." [(ngModel)]="shareEmail">
-
-            <label style="font-size: 0.9rem; font-weight: bold; color: #495057; margin-top: 15px;">Права доступу:</label>
-            <select class="board-select" [(ngModel)]="shareRole" style="width: 100%; margin-top: 5px;">
-              <option value="Editor">✏️ Редактор (Може змінювати задачі)</option>
-              <option value="Viewer">👁️ Читач (Тільки перегляд)</option>
-            </select>
-
-            <button class="save-btn" style="margin-top: 20px; width: 100%; font-size: 1rem;" (click)="submitShare()">
-              Надіслати запрошення
-            </button>
           </div>
         </div>
       </div>
-    </div>
-  }
+    }
 
+    @if (showAccessModal) {
+      <div class="modal-overlay" (document:keydown.escape)="closeAccessModal()">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Керування доступом</h2>
+            <button class="close-btn" (click)="closeAccessModal()" title="Закрити">✖</button>
+          </div>
+
+          <div class="modal-body">
+            @if (sharedUsers.length === 0) {
+              <p class="modal-empty-text">Ця дошка поки що нікому не доступна.</p>
+            } @else {
+              <ul class="user-list">
+                @for (user of sharedUsers; track user.id) {
+                  <li>
+                    <div class="user-info">
+                      <strong>{{ user.username }}</strong>
+                      <span class="modal-muted-text">
+                        ({{ user.email }})
+                        <span class="role-badge">
+                          [{{ user.accessLevel === 'Editor' ? 'Редактор' : 'Читач' }}]
+                        </span>
+                        @if (user.status === 'Pending') {
+                          <span class="pending-status">(Очікує підтвердження⏳)</span>
+                        }
+                      </span>
+                    </div>
+                    <button class="revoke-btn" (click)="revokeAccess(user.id)" title="Забрати доступ">✖</button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (showShareModal) {
+      <div class="modal-overlay" (document:keydown.escape)="closeShareModal()">
+        <div class="modal-content share-modal-content">
+          <div class="modal-header">
+            <h2>Поділитися дошкою</h2>
+            <button class="close-btn" (click)="closeShareModal()" title="Закрити">✖</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="task-form modal-form">
+              <label class="modal-label">Email користувача:</label>
+              <input type="email" placeholder="Введіть email..." [(ngModel)]="shareEmail">
+
+              <label class="modal-label mt-15">Права доступу:</label>
+              <select class="board-select w-100 mt-5" [(ngModel)]="shareRole">
+                <option value="Editor">✏️ Редактор (Може змінювати задачі)</option>
+                <option value="Viewer">👁️ Читач (Тільки перегляд)</option>
+              </select>
+
+              <button class="save-btn w-100 mt-20" (click)="submitShare()">
+                Надіслати запрошення
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (customAlertMessage) {
+      <div class="modal-overlay"
+           (click)="closeAlert()"
+           (keydown.enter)="closeAlert()"
+           (document:keydown.escape)="closeAlert()"
+           (document:keydown.enter)="closeAlert()">
+
+        <div class="modal-content dialog-modal"
+             (click)="$event.stopPropagation()"
+             (keydown.enter)="$event.stopPropagation()">
+
+          <div class="modal-body dialog-body">
+            <div class="dialog-icon">ℹ️</div>
+            <p class="dialog-text">{{ customAlertMessage }}</p>
+            <button class="add-btn w-100 mt-20" (click)="closeAlert()">Зрозуміло</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (customConfirmMessage) {
+      <div class="modal-overlay"
+           (click)="confirmNo()"
+           (keydown.enter)="confirmNo()"
+           (document:keydown.escape)="confirmNo()">
+
+        <div class="modal-content dialog-modal"
+             (click)="$event.stopPropagation()"
+             (keydown.enter)="$event.stopPropagation()">
+
+          <div class="modal-body dialog-body">
+            <div class="dialog-icon">⚠️</div>
+            <p class="dialog-text">{{ customConfirmMessage }}</p>
+            <div class="dialog-actions">
+              <button class="revoke-btn btn-dialog" (click)="confirmNo()">Ні, скасувати</button>
+              <button class="save-btn btn-dialog" (click)="confirmYes()">Так, впевнений</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+  </div>
 } @else {
   <router-outlet></router-outlet>
 }
