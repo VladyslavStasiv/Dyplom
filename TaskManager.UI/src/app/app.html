@@ -14,6 +14,7 @@
           }
         </button>
 
+        <button class="add-btn" style="background-color: #7f8c8d;" (click)="openHistoryModal()" title="Переглянути історію дій">📜 Історія</button>
         <button class="export-btn" (click)="exportToCSV()" title="Завантажити звіт у CSV">📊 Звіт</button>
         <button class="theme-toggle" (click)="toggleDarkMode()" title="Змінити тему">
           {{ isDarkMode ? '☀️' : '🌙' }}
@@ -46,6 +47,21 @@
         <span class="search-icon">🔍</span>
         <input type="text" class="search-input" placeholder="Пошук задач за назвою або описом..." [(ngModel)]="searchQuery">
       </div>
+    </div>
+
+    <div class="filter-chips">
+      <button class="chip-btn" [class.active]="activeFilter === 'all'" (click)="setFilter('all')">
+        Всі задачі
+      </button>
+      <button class="chip-btn" [class.active]="activeFilter === 'critical'" (click)="setFilter('critical')">
+        🔥 Критичні
+      </button>
+      <button class="chip-btn" [class.active]="activeFilter === 'high'" (click)="setFilter('high')">
+        🔴 Високі
+      </button>
+      <button class="chip-btn" [class.active]="activeFilter === 'overdue'" (click)="setFilter('overdue')">
+        ⚠️ Прострочені
+      </button>
     </div>
 
     <div class="dashboard">
@@ -111,8 +127,10 @@
             <div class="task-card"
                  id="task-{{ task.id }}"
                  [class.recommended-highlight]="recommendedTaskId === task.id"
-                 [draggable]="canEdit" (dragstart)="onDragStart(task)"
-                 (mouseenter)="onMouseEnter(task)" (mouseleave)="onMouseLeave()">
+                 [draggable]="canEdit"
+                 (dragstart)="onDragStart(task)"
+                 (mouseenter)="onMouseEnter(task)"
+                 (mouseleave)="onMouseLeave()">
 
               <div class="task-card-header">
                 <h3>{{ task.title }}</h3>
@@ -133,7 +151,7 @@
 
               @if (task.deadline) {
                 <p class="deadline-text" [class.overdue-text]="isOverdue(task)">
-                  ⏳ {{ task.deadline | date:'short' }}
+                  ⏳ {{ task.deadline | date:'dd.MM.yyyy, HH:mm' }}
                   @if (isOverdue(task)) { <span class="overdue-badge">⚠️ Прострочено!</span> }
                 </p>
               }
@@ -157,9 +175,10 @@
             <div class="task-card in-progress-card"
                  id="task-{{ task.id }}"
                  [class.recommended-highlight]="recommendedTaskId === task.id"
-                 [draggable]="canEdit" (dragstart)="onDragStart(task)"
-                 (mouseenter)="onMouseEnter(task)" (mouseleave)="onMouseLeave()">
-
+                 [draggable]="canEdit"
+                 (dragstart)="onDragStart(task)"
+                 (mouseenter)="onMouseEnter(task)"
+                 (mouseleave)="onMouseLeave()">
               <div class="task-card-header">
                 <h3>{{ task.title }}</h3>
                 @if (canEdit) {
@@ -179,7 +198,7 @@
 
               @if (task.deadline) {
                 <p class="deadline-text" [class.overdue-text]="isOverdue(task)">
-                  ⏳ {{ task.deadline | date:'short' }}
+                  ⏳ {{ task.deadline | date:'dd.MM.yyyy, HH:mm' }}
                   @if (isOverdue(task)) { <span class="overdue-badge">⚠️ Прострочено!</span> }
                 </p>
               }
@@ -203,8 +222,10 @@
             <div class="task-card done-card"
                  id="task-{{ task.id }}"
                  [class.recommended-highlight]="recommendedTaskId === task.id"
-                 [draggable]="canEdit" (dragstart)="onDragStart(task)"
-                 (mouseenter)="onMouseEnter(task)" (mouseleave)="onMouseLeave()">
+                 [draggable]="canEdit"
+                 (dragstart)="onDragStart(task)"
+                 (mouseenter)="onMouseEnter(task)"
+                 (mouseleave)="onMouseLeave()">
 
               <div class="task-card-header">
                 <h3 class="task-title-done">{{ task.title }}</h3>
@@ -219,7 +240,7 @@
               <p class="task-status-done">Виконано! 🎉</p>
 
               @if (task.deadline) {
-                <p class="deadline-text">⏳ {{ task.deadline | date:'short' }}</p>
+                <p class="deadline-text">⏳ {{ task.deadline | date:'dd.MM.yyyy, HH:mm' }}</p>
               }
 
               @if (hoveredTaskId === task.id) {
@@ -370,6 +391,48 @@
             </div>
           </div>
         </div>
+      </div>
+    }
+
+    @if (showHistoryModal) {
+      <div class="modal-overlay" (document:keydown.escape)="closeHistoryModal()">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Історія дій на дошці</h2>
+            <button class="close-btn" (click)="closeHistoryModal()" title="Закрити">✖</button>
+          </div>
+
+          <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+            @if (boardHistory.length === 0) {
+              <p class="modal-empty-text">Історія поки що порожня. Створіть або перемістіть задачу!</p>
+            } @else {
+              <ul class="timeline">
+                @for (item of boardHistory; track item.timestamp) {
+                  <li class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                      <span class="timeline-time">{{ item.timestamp | date:'dd.MM.yyyy, HH:mm' }}</span>
+                      <p class="timeline-text">
+                        <strong>{{ item.username }}</strong> {{ item.action }}
+                      </p>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    @for (c of activeConfetti; track $index) {
+      <div class="confetti-piece"
+           [style.left]="c.left"
+           [style.background-color]="c.color"
+           [style.animation-duration]="c.duration"
+           [style.animation-delay]="c.delay"
+           [style.width]="c.width"
+           [style.height]="c.height">
       </div>
     }
 

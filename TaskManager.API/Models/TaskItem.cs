@@ -14,43 +14,42 @@ namespace TaskManager.API.Models
         
         // 💡 НОВЕ: Багатокритеріальний зважений алгоритм пріоритезації
         [NotMapped] 
-        public int PriorityScore 
-        { 
-            get 
+public int PriorityScore 
+{ 
+    get 
+    {
+        int score = 0;
+
+        // 1. Оцінка складності (Складність 1-10 * 3) -> Макс 30 балів
+        score += Complexity * 3; 
+
+        if (Deadline.HasValue)
+        {
+            var timeRemaining = Deadline.Value - DateTime.UtcNow;
+            
+            if (timeRemaining.TotalHours < 0)
             {
-                int score = 0;
-
-                // 1. Оцінка складності (Складність від 1 до 10 множимо на 3)
-                // Максимум: 30 балів
-                score += Complexity * 3; 
-
-                // 2. Оцінка дедлайну (Експоненційне зростання важливості)
-                if (Deadline.HasValue)
-                {
-                    // Використовуємо UtcNow, щоб не було проблем з часовими поясами
-                    var timeRemaining = Deadline.Value - DateTime.UtcNow;
-                    
-                    if (timeRemaining.TotalHours < 0)
-                    {
-                        score += 70; // 🚨 Прострочено: Максимальний пріоритет
-                    }
-                    else if (timeRemaining.TotalHours <= 24)
-                    {
-                        score += 50; // ⏳ Менше доби до здачі
-                    }
-                    else if (timeRemaining.TotalDays <= 3)
-                    {
-                        score += 30; // 📅 Менше 3 днів
-                    }
-                    else if (timeRemaining.TotalDays <= 7)
-                    {
-                        score += 15; // 🗓️ Менше тижня
-                    }
-                }
-                
-                return score;
+                // 💡 НОВА ЛОГІКА: Базовий штраф 70 + 5 балів за кожен день прострочення
+                int daysOverdue = (int)Math.Abs(timeRemaining.TotalDays);
+                score += 70 + (daysOverdue * 5); 
+            }
+            else if (timeRemaining.TotalHours <= 24)
+            {
+                score += 50; // Менше доби
+            }
+            else if (timeRemaining.TotalDays <= 3)
+            {
+                score += 30; // Менше 3 днів
+            }
+            else if (timeRemaining.TotalDays <= 7)
+            {
+                score += 15; // Менше тижня
             }
         }
+        
+        return score;
+    }
+}
         
         public int ColumnId { get; set; }
 

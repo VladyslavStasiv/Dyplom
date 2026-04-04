@@ -1,6 +1,9 @@
 /* ==========================================================
    💡 ЗМІННІ КОЛЬОРІВ (Виправлено спеціально для Angular)
    ========================================================== */
+  *, *::before, *::after {
+  box-sizing: border-box;
+}
 .board-container {
   /* СВІТЛА ТЕМА (Твій оригінальний дизайн) */
   --bg-color: #f4f7f6;
@@ -195,6 +198,11 @@ header {
   cursor: grab;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
   position: relative;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: element;
+  touch-action: none;
 }
 
 .task-card:active {
@@ -774,4 +782,265 @@ header {
   0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.6); }
   70% { box-shadow: 0 0 0 15px rgba(155, 89, 182, 0); }
   100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0); }
+}
+
+/* ==========================================================
+   📜 ІСТОРІЯ (Таймлайн)
+   ========================================================== */
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px 0;
+  position: relative;
+}
+
+/* Вертикальна лінія таймлайну */
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 10px;
+  width: 2px;
+  background: var(--select-border);
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 30px;
+  margin-bottom: 15px;
+}
+
+/* Крапочки подій */
+.timeline-marker {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #3498db;
+  border: 2px solid var(--bg-color);
+  z-index: 1;
+}
+
+.timeline-time {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.timeline-text {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-title);
+  line-height: 1.4;
+}
+
+/* ==========================================================
+   🎉 АНІМАЦІЯ КОНФЕТТІ
+   ========================================================== */
+.confetti-piece {
+  position: fixed;
+  top: -20px; /* Починають падати трохи вище екрану */
+  z-index: 9999;
+  pointer-events: none; /* Щоб не блокували кліки мишкою */
+  border-radius: 2px;
+  animation: confettiFall linear forwards;
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(0) rotate(0deg) rotateX(0deg);
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg) rotateX(360deg);
+    opacity: 0; /* Плавно розчиняються внизу екрану */
+  }
+}
+
+/* ==========================================================
+   🎯 ФІЛЬТРИ-ЧІПСИ
+   ========================================================== */
+.filter-chips {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.chip-btn {
+  padding: 6px 16px;
+  border-radius: 20px;
+  /* 💡 ВИПРАВЛЕНО: Використовуємо твої реальні змінні кольорів */
+  border: 1px solid var(--select-border);
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 1px 3px var(--shadow-sm);
+}
+
+.chip-btn:hover {
+  /* 💡 ВИПРАВЛЕНО: Колір при наведенні з твоєї теми */
+  background-color: var(--column-hover);
+  transform: translateY(-1px);
+}
+
+.chip-btn.active {
+  background-color: #004085; /* 💡 Дуже темний синій. Контраст із білим > 10:1 (Рівень AAA) */
+  color: #ffffff;
+  border-color: #004085;
+  box-shadow: 0 4px 6px rgba(0, 64, 133, 0.3);
+}
+
+/* ==========================================================
+   📱 АДАПТИВНІСТЬ (MOBILE & TABLET RESPONSIVE DESIGN)
+   ========================================================== */
+
+/* --- ПЛАНШЕТИ (iPad, до 1024px) --- */
+@media (max-width: 1024px) {
+  .stat-cards {
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    flex: 1 1 calc(50% - 15px);
+  }
+
+  /* 💡 Фікс для iPad: вмикаємо свайп колонок, щоб текст не був дрібним */
+  .columns-wrapper {
+    display: flex;
+    justify-content: flex-start !important; /* 💡 ФІКС ЗНИКЛОЇ 1-ї КОЛОНКИ */
+    overflow-x: auto;
+    padding-bottom: 20px;
+    padding-left: 10px;
+    padding-right: 10px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .column {
+    min-width: 320px; /* Колонка буде фіксованої ширини, текст буде великим! */
+    max-width: 350px;
+    flex-shrink: 0;
+    scroll-snap-align: start; /* На планшеті зручніше рівняти по лівому краю */
+    margin-right: 20px;
+  }
+}
+
+/* --- СМАРТФОНИ (до 768px) --- */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .board-container {
+    width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  .header-titles h1 {
+    font-size: 1.4rem;
+    word-wrap: break-word;
+  }
+
+  .board-select {
+    width: 100%;
+    max-width: 100%;
+    text-overflow: ellipsis;
+  }
+
+  header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+    padding: 15px 10px;
+  }
+
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .header-actions > button, .header-actions > select {
+    flex: 1 1 calc(50% - 10px);
+    margin: 0;
+    justify-content: center;
+  }
+
+  .logout-btn {
+    flex: 1 1 100% !important;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .toolbar .add-btn, .search-container, .search-input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .filter-chips {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding: 5px 10px 15px 10px;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chip-btn {
+    flex-shrink: 0;
+  }
+
+  .stat-card {
+    flex: 1 1 100%;
+    margin: 5px 10px;
+  }
+
+  /* 💡 Фікс для Телефонів: вирівнювання зліва, щоб 1-ша колонка не вилітала */
+  .columns-wrapper {
+    justify-content: flex-start !important;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .column {
+    min-width: 85vw; /* На телефоні колонка майже на весь екран */
+    max-width: 85vw;
+    scroll-snap-align: center; /* Центруємо для красивого ефекту каруселі */
+    margin-right: 15px;
+  }
+
+  /* Прибираємо відступ у останньої колонки, щоб не було дірки */
+  .column:last-child {
+    margin-right: 0;
+  }
+
+  .modal-content {
+    width: 95%;
+    padding: 15px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
 }

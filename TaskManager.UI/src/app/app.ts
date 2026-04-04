@@ -88,7 +88,6 @@ export class App implements OnInit {
   acceptInvitation(boardId: number) {
     this.http.post(`http://localhost:5133/api/boards/${boardId}/accept`, {}).subscribe({
       next: () => {
-        // 💡 Замість alert()
         this.showAlert('Запрошення успішно прийнято!');
         this.fetchInvitations();
         this.fetchBoard();
@@ -99,7 +98,6 @@ export class App implements OnInit {
   }
 
   declineInvitation(boardId: number) {
-    // 💡 Замість confirm()
     this.showConfirm('Ви впевнені, що хочете відхилити це запрошення?', () => {
       this.http.post(`http://localhost:5133/api/boards/${boardId}/decline`, {}).subscribe({
         next: () => {
@@ -115,7 +113,6 @@ export class App implements OnInit {
     if (this.invitations.length > 0) {
       this.showInvitationsModal = true;
     } else {
-      // 💡 Замість alert()
       this.showAlert('У вас немає нових запрошень.');
     }
   }
@@ -131,7 +128,6 @@ export class App implements OnInit {
 
   exportToCSV() {
     if (this.filteredTasks.length === 0) {
-      // 💡 Замість alert()
       this.showAlert('Немає задач для експорту на цій дошці!');
       return;
     }
@@ -141,7 +137,16 @@ export class App implements OnInit {
     this.filteredTasks.forEach(t => {
       const column = this.columns.find(c => c.id == t.columnId);
       const columnName = column ? column.title : "Невідомо";
-      const deadline = t.deadline ? new Date(t.deadline).toLocaleString() : "Ні";
+
+      // 💡 ВІДШЛІФОВАНО: Жорстко задаємо український формат дати для таблиці
+      let deadline = "Ні";
+      if (t.deadline) {
+        const d = new Date(t.deadline);
+        deadline = d.toLocaleString('uk-UA', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+      }
 
       const title = String(t.title || "").replaceAll(";", ",");
       const desc = String(t.description || "")
@@ -155,27 +160,50 @@ export class App implements OnInit {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
 
+    // 💡 ВІДШЛІФОВАНО: Форматуємо дату в самій назві файлу
+    const fileNameDate = new Date().toLocaleDateString('uk-UA');
     link.setAttribute("href", url);
-    link.setAttribute("download", `Звіт_задач_${new Date().toLocaleDateString()}.csv`);
+    link.setAttribute("download", `Звіт_задач_${fileNameDate}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     link.remove();
   }
 
+  // ==========================================
+  // 🎯 ШВИДКІ ФІЛЬТРИ-ЧІПСИ
+  // ==========================================
+  activeFilter: string = 'all';
+
+  setFilter(filter: string) {
+    this.activeFilter = filter;
+    this.cdr.detectChanges();
+  }
+
   get filteredTasks() {
-    if (!this.searchQuery || this.searchQuery.trim() === '') {
-      return this.tasks;
+    let result = this.tasks;
+    const doneColumnId = this.columns.length > 2 ? this.columns[2].id : -1;
+
+    // 1. Фільтруємо за активним чіпсом + ігноруємо колонку "Готово"
+    if (this.activeFilter === 'critical') {
+      result = result.filter(t => t.priorityScore >= 70 && t.columnId !== doneColumnId);
+    } else if (this.activeFilter === 'high') {
+      result = result.filter(t => t.priorityScore >= 40 && t.priorityScore < 70 && t.columnId !== doneColumnId);
+    } else if (this.activeFilter === 'overdue') {
+      result = result.filter(t => this.isOverdue(t) && t.columnId !== doneColumnId);
     }
 
-    const lowerQuery = this.searchQuery.toLowerCase();
+    // 2. Пошук за текстом (залишаємо як є)
+    if (this.searchQuery && this.searchQuery.trim() !== '') {
+      const lowerQuery = this.searchQuery.toLowerCase();
+      result = result.filter(t => {
+        const safeTitle = String(t.title || '').toLowerCase();
+        const safeDesc = String(t.description || '').toLowerCase();
+        return safeTitle.includes(lowerQuery) || safeDesc.includes(lowerQuery);
+      });
+    }
 
-    return this.tasks.filter(t => {
-      if (!t) return false;
-      const safeTitle = String(t.title || '').toLowerCase();
-      const safeDesc = String(t.description || '').toLowerCase();
-      return safeTitle.includes(lowerQuery) || safeDesc.includes(lowerQuery);
-    });
+    return result;
   }
 
   get todoCount() {
@@ -227,7 +255,6 @@ export class App implements OnInit {
   recommendNextTask() {
     if (this.columns.length < 2) return;
 
-    // 1. Беремо задачі тільки з колонок "До виконання" та "В процесі"
     const activeColumnIds = new Set([this.columns[0].id, this.columns[1].id]);
     const activeTasks = this.tasks.filter(t => activeColumnIds.has(t.columnId));
 
@@ -236,7 +263,6 @@ export class App implements OnInit {
       return;
     }
 
-    // 2. Алгоритм пошуку найважливішої задачі
     let nextTask = activeTasks[0];
     for (const task of activeTasks) {
       if (task.priorityScore > nextTask.priorityScore) {
@@ -244,11 +270,9 @@ export class App implements OnInit {
       }
     }
 
-    // 3. Підсвічуємо її
     this.recommendedTaskId = nextTask.id;
-    this.cdr.detectChanges(); // Примусово оновлюємо екран
+    this.cdr.detectChanges();
 
-    // 4. Плавно прокручуємо екран до цієї задачі
     setTimeout(() => {
       const element = document.getElementById('task-' + nextTask.id);
       if (element) {
@@ -256,11 +280,66 @@ export class App implements OnInit {
       }
     }, 100);
 
-    // 5. Вимикаємо підсвітку через 5 секунд
     setTimeout(() => {
       this.recommendedTaskId = null;
       this.cdr.detectChanges();
     }, 5000);
+  }
+
+  // ==========================================
+  // 📜 ІСТОРІЯ ДІЙ (AUDIT LOG)
+  // ==========================================
+  boardHistory: any[] = [];
+  showHistoryModal = false;
+
+  openHistoryModal() {
+    if (!this.currentBoardId) return;
+
+    this.http.get<any[]>(`http://localhost:5133/api/tasks/history/${this.currentBoardId}`).subscribe({
+      next: (data) => {
+        this.boardHistory = data;
+        this.showHistoryModal = true;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Помилка завантаження історії:', err);
+        this.showAlert('Не вдалося завантажити історію дій.');
+      }
+    });
+  }
+
+  closeHistoryModal() {
+    this.showHistoryModal = false;
+  }
+
+  // ==========================================
+  // 🎉 МІКРО-АНІМАЦІЯ: КОНФЕТТІ
+  // ==========================================
+  activeConfetti: any[] = [];
+
+  shootConfetti() {
+    const colors = ['#f1c40f', '#e74c3c', '#9b59b6', '#3498db', '#2ecc71', '#e67e22', '#1abc9c'];
+    const newConfetti = [];
+
+    // Генеруємо 70 частинок конфетті з випадковими параметрами
+    for (let i = 0; i < 70; i++) {
+      newConfetti.push({
+        left: Math.random() * 100 + 'vw', // Випадкова позиція по горизонталі
+        color: colors[Math.floor(Math.random() * colors.length)], // Випадковий колір
+        duration: (Math.random() * 2 + 2) + 's', // Швидкість падіння (від 2 до 4 секунд)
+        delay: Math.random() * 0.5 + 's', // Затримка старту
+        width: (Math.random() * 8 + 6) + 'px',
+        height: (Math.random() * 12 + 10) + 'px'
+      });
+    }
+
+    this.activeConfetti = newConfetti;
+
+    // Прибираємо сміття з екрану через 4 секунди
+    setTimeout(() => {
+      this.activeConfetti = [];
+      this.cdr.detectChanges();
+    }, 4000);
   }
 
   get isCurrentBoardOwner(): boolean {
@@ -378,7 +457,6 @@ export class App implements OnInit {
 
   saveTask() {
     if (!this.newTask.title) {
-      // 💡 Замість alert()
       this.showAlert('Будь ласка, введіть назву задачі!');
       return;
     }
@@ -404,7 +482,6 @@ export class App implements OnInit {
   }
 
   deleteTask(id: number) {
-    // 💡 Замість confirm()
     this.showConfirm('Ви впевнені, що хочете видалити цю задачу?', () => {
       this.http.delete(`http://localhost:5133/api/tasks/${id}`).subscribe({
         next: () => {
@@ -453,8 +530,27 @@ export class App implements OnInit {
     this.onMouseLeave();
   }
 
-  onDragOver(event: DragEvent) {
-    event.preventDefault();
+ onDragOver(event: DragEvent) {
+    event.preventDefault(); // Дозволяє "кинути" елемент
+
+    const wrapper = document.querySelector('.columns-wrapper');
+    if (wrapper) {
+      const touchX = event.clientX;
+      const screenWidth = window.innerWidth;
+      const threshold = 100; // Зона в 100px від країв
+
+      // Захист від нульових координат
+      if (touchX === 0) return;
+
+      // 💡 Безпечний скрол: пересуваємо екран на 25px кожного разу,
+      // коли палець або мишка "совається" в цій зоні
+      if (touchX > screenWidth - threshold) {
+        wrapper.scrollLeft += 25;
+      }
+      else if (touchX < threshold) {
+        wrapper.scrollLeft -= 25;
+      }
+    }
   }
 
   onDrop(event: DragEvent, newColumnId: number) {
@@ -465,6 +561,10 @@ export class App implements OnInit {
 
       if (task && task.columnId !== newColumnId) {
         this.moveTask(task, newColumnId);
+
+        if (this.columns.length > 2 && newColumnId === this.columns[2].id) {
+          this.shootConfetti();
+        }
       }
       this.draggedTaskId = null;
     }
@@ -472,7 +572,6 @@ export class App implements OnInit {
 
   openShareModal() {
     if (!this.currentBoardId) {
-      // 💡 Замість alert()
       this.showAlert('Помилка: Дошка ще не завантажена!');
       return;
     }
@@ -487,7 +586,6 @@ export class App implements OnInit {
 
   submitShare() {
     if (!this.shareEmail.trim()) {
-      // 💡 Замість alert()
       this.showAlert('Будь ласка, введіть Email користувача!');
       return;
     }
@@ -500,13 +598,11 @@ export class App implements OnInit {
 
     this.http.post('http://localhost:5133/api/Boards/share', requestBody).subscribe({
       next: (response: any) => {
-        // 💡 Замість alert()
         this.showAlert(response.message || 'Запрошення успішно надіслано!');
         this.closeShareModal();
       },
       error: (err) => {
         console.error('Помилка спільного доступу:', err);
-        // 💡 Замість alert()
         this.showAlert(err.error?.message || 'Не вдалося надіслати запрошення.');
       }
     });
@@ -523,7 +619,6 @@ export class App implements OnInit {
       },
       error: (err) => {
         console.error('Помилка завантаження користувачів:', err);
-        // 💡 Замість alert()
         this.showAlert('Не вдалося завантажити список доступу.');
       }
     });
@@ -536,7 +631,6 @@ export class App implements OnInit {
   }
 
   revokeAccess(userId: number) {
-    // 💡 Замість confirm()
     this.showConfirm('Ви впевнені, що хочете забрати доступ у цього користувача (або скасувати запрошення)?', () => {
       this.http.delete(`http://localhost:5133/api/Boards/${this.currentBoardId}/share/${userId}`).subscribe({
         next: () => {
